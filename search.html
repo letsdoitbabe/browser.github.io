@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google-like Search Bar with Speech Recognition</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        #search-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        #search-box {
+            width: 300px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            padding-right: 40px; /* Space for the microphone button */
+            margin-bottom: 10px;
+        }
+
+        #search-mic,
+        #search-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+        }
+
+        #search-mic {
+            right: 10px;
+        }
+
+        #search-btn {
+            right: 45px;
+        }
+
+        #search-results {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .result-item {
+            width: 80%;
+            padding: 10px;
+            border: 2px solid blue;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        
+        #scroll-to-top-btn,
+        #load-more-btn {
+            display: none; /* Initially hide the button */
+            position: relative;
+            bottom: 1%;
+            right: 1%;
+            background-color: transparent;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 3em;
+        }
+        #back-btn {
+            position: absolute;
+            top: 1.5%;
+            left: 8.8%;
+            font-size: 2em;
+            background-color: transparent;
+        }<hr>
+    </style>
+</head>
+<body>
+
+<div id="search-container">
+    <input type="text" id="search-box" placeholder="Search...">
+    <div id="search-mic" onclick="startSpeechRecognition()">🎤</div>
+    <div id="search-btn" onclick="searchByQuery()">🔍</div>
+</div>
+
+<div id="search-results"></div>
+
+<div class="btn-container">
+    <button id="back-btn" onclick="goBack()">◀</button>
+    <button id="scroll-to-top-btn" onclick="scrollToTop()">⏫</button>
+    <button id="load-more-btn" onclick="loadMoreResults()">⏬</button>
+</div>
+<hr>
+<script>
+    let nextPageToken = '';
+    const resultsPerPage = 10;
+    let totalResults = 0;
+
+    function startSpeechRecognition() {
+        const recognition = new webkitSpeechRecognition() || new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.onresult = function (event) {
+            const speechResult = event.results[0][0].transcript;
+            document.getElementById('search-box').value = speechResult;
+            searchGoogle(speechResult);
+        };
+        recognition.start();
+    }
+
+    function searchByQuery() {
+        const query = document.getElementById('search-box').value;
+        searchGoogle(query);
+    }
+
+    function searchGoogle(query) {
+        const apiKey = 'AIzaSyCopgJYXntKkxg4nFVkMIju8Xu9tKu4xr0';
+        const cx = '7606a9538e48c463e';
+        const apiUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(query)}&key=${apiKey}&cx=${cx}&num=${resultsPerPage}&start=1${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`;
+
+        fetch(apiUrl)
+            .then(response => response.json())
+            .then(data => {
+                totalResults = data.searchInformation.totalResults;
+                displaySearchResults(data.items);
+                nextPageToken = data.nextPageToken || '';
+                document.getElementById('load-more-btn').style.display = 'block'; // Show the button after search
+                document.getElementById('scroll-to-top-btn').style.display = 'block'; // Show scroll to top button after search
+            })
+            .catch(error => {
+                console.error('Error fetching search results:', error);
+            });
+    }
+
+    function loadMoreResults() {
+        const query = document.getElementById('search-box').value;
+        const apiKey = 'AIzaSyCopgJYXntKkxg4nFVkMIju8Xu9tKu4xr0';
+        const cx = '7606a9538e48c463e';
+        const apiUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(query)}&key=${apiKey}&cx=${cx}&num=${resultsPerPage}&start=${resultsPerPage + 1}&pageToken=${nextPageToken}`;
+
+        fetch(apiUrl)
+            .then(response => response.json())
+            .then(data => {
+                displaySearchResults(data.items);
+                nextPageToken = data.nextPageToken || '';
+            })
+            .catch(error => {
+                console.error('Error fetching more search results:', error);
+            });
+    }
+
+    function displaySearchResults(results) {
+        const resultsContainer = document.getElementById('search-results');
+
+        results.forEach(result => {
+            const resultItem = document.createElement('div');
+            resultItem.className = 'result-item';
+            resultItem.innerHTML = `
+                <h3>${result.title}</h3>
+                <p>${result.snippet}</p>
+                <a href="${result.link}" target="_blank">Read more</a>
+            `;
+            resultsContainer.appendChild(resultItem);
+        });
+
+        if (resultsContainer.childElementCount >= totalResults) {
+            document.getElementById('load-more-btn').style.display = 'none';
+        } else {
+            document.getElementById('load-more-btn').style.display = 'block';
+        }
+    }
+
+    function goBack() {
+        window.history.back(); }
+
+    function scrollToTop() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Event listener for Enter key to trigger search
+    document.getElementById('search-box').addEventListener('keyup', function(event) {
+        if (event.keyCode === 13) { // keyCode 13 corresponds to Enter key
+            event.preventDefault();
+            searchByQuery();
+        }
+    });
+</script>
+
+
+</body>
+</html>
+
+   
