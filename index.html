@@ -115,13 +115,6 @@
             font-size: 1em;
             background-color: transparent;
         }
-
-        #iframe-container {
-            width: 80%;
-            height: 80%;
-            border: none;
-            margin-top: 20px;
-        }
     </style>
 </head>
 <body>
@@ -140,7 +133,6 @@
     <button id="load-more-btn" onclick="loadMoreResults()">⏬</button>
 </div>
 <hr>
-<iframe id="iframe-container"></iframe>
 <script>
     let nextPageToken = '';
     const resultsPerPage = 10;
@@ -222,8 +214,7 @@
     }
 
     function redirectToLink(link) {
-        document.getElementById('iframe-container').src = 'https://cors-anywhere.herokuapp.com/' + link;
-        document.getElementById('search-results').style.display = 'none';
+        window.location.replace(link);
     }
 
     function goBack() {
